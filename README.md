@@ -14,6 +14,7 @@ request paths.
 | Tool | What it reports |
 |---|---|
 | **SQL spy** (`sql_spy`) | Every query grouped by structure, with count, time, DB alias and the first-party line that caused it. N+1s are labelled with the relation and serializer field that triggered them, plus a fix hint: `missing_select_related`, `never_prefetched`, `prefetched_but_busted` (a `.filter()`/`.first()` rebuilt a prefetched queryset), `deferred_reload` (a field excluded by `.only()`/`.defer()` was read). Separates real fan-out from the same object fetched repeatedly. Against a remote database it also reads Postgres's own execution time from `pg_stat_statements`. |
+| **Planner misestimate detector** | `EXPLAIN ANALYZE` on hot queries flags plan nodes whose row estimates miss by 10× or more, finds the source node where the misestimate starts, and names the fix (`ANALYZE`, extended statistics). A drift gate catches plan changes. |
 | **ES spy** (`es_spy`) | Every Elasticsearch call grouped by shape, with client time, server `took` and caller. Flags responses that are HTTP 200 but incomplete: shard failures, `timed_out`, bulk item errors, `update_by_query`/`delete_by_query` failures, `msearch` sub-request errors and `mget` doc errors. |
 | **Call tracer** (`dynamic_life_saver`) | First-party calls in execution order with cumulative and self time, the self-time hogs, and functions called many times per request. When a spy runs alongside it, each function also shows its own SQL and ES time, so you can see whether a slow function is waiting on the database, on search, or on Python. |
 | **Run capture + drift** (`trace_capture`) | Runs the tracer and spies together and writes the output to a `.txt`, a readable `.py` with each traced function's source, or a JSON fingerprint. Comparing a `master` fingerprint with a branch fingerprint shows any change in queries, response or logs after a refactor, even when the call graph moved. |
@@ -225,8 +226,5 @@ inspect_model(Book)
 
 ## Roadmap
 
-- **Planner misestimate detector:** run `EXPLAIN (ANALYZE, BUFFERS)` on hot queries, flag plan
-  nodes whose row estimates are off by 10× or more, point to the node that caused it, and suggest
-  the fix (`ANALYZE`, `CREATE STATISTICS`, an expression index). Plus a gate that catches plan-shape changes.
 - CI matrix for Django 5.2 and 6.x.
 - MySQL support via a compose override file.

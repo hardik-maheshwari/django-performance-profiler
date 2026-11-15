@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Profiler output (generated at runtime)
+dynamic_life_saver_log.txt
+life_saver_llm.txt
+.type_cache*.json
+*.corrupt
+*.tmp.*
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

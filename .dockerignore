@@ -1,0 +1,5 @@
+.git
+**/__pycache__
+*.pyc
+.type_cache*.json
+dynamic_life_saver_log.txt

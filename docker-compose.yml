@@ -1,0 +1,52 @@
+# Demo stack: a small Django/DRF app + Postgres + Elasticsearch, wired to the
+# profiler. `docker compose up --build`, then hit the endpoints in README.md and
+# read the reports in `docker compose logs -f web`.
+# Other backends (e.g. MySQL) go in override files:
+#   docker compose -f docker-compose.yml -f docker-compose.mysql.yml up
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: profiler
+      POSTGRES_USER: profiler
+      POSTGRES_PASSWORD: profiler   # local demo only
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
+    volumes:
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-pg_stat_statements.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U profiler -d profiler"]
+      interval: 3s
+      retries: 20
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"   # local demo only
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' || exit 1"]
+      interval: 5s
+      retries: 30
+
+  web:
+    build: .
+    environment:
+      DJANGO_SETTINGS_MODULE: demo_project.settings
+      PYTHONPATH: /app:/app/demo
+      DB_HOST: postgres
+      ES_URL: http://elasticsearch:9200
+      LIFESAVER_PROJECT_ROOT: /app/demo   # first-party code = the demo app
+    command: >
+      sh -c "python demo/manage.py migrate --noinput &&
+             python demo/manage.py seed &&
+             python demo/manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
